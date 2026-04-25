@@ -1,0 +1,3 @@
+[submodule "externals/verilator"]
+	path = externals/verilator
+	url = https://github.com/verilator/verilator
