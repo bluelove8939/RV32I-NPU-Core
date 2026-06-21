@@ -19,7 +19,12 @@ CPU_TOP_TEST_BINS = \
 	$(TB_DIR)/cpu_top_tests/t2_procedures.bin \
 	$(TB_DIR)/cpu_top_tests/t3_trap.bin \
 	$(TB_DIR)/cpu_top_tests/t4_ecall.bin \
-	$(TB_DIR)/cpu_top_tests/t5_fence_and_flush.bin
+	$(TB_DIR)/cpu_top_tests/t5_fence_and_flush.bin \
+	$(TB_DIR)/cpu_top_tests/t6_external_interrupt.bin \
+	$(TB_DIR)/cpu_top_tests/t7_ecall_syscall_abi.bin \
+	$(TB_DIR)/cpu_top_tests/t8_load_store_widths.bin \
+	$(TB_DIR)/cpu_top_tests/t9_misaligned_load_store_trap.bin \
+	$(TB_DIR)/cpu_top_tests/t10_csr_ops.bin
 
 TB_SPM_BUS_SRCS = \
 	$(SRC_DIR)/spm_bank.sv \
@@ -98,6 +103,8 @@ TB_CPU_TOP_TESTS_SRCS = \
 	$(SRC_DIR)/cpu_reg_file.sv \
 	$(SRC_DIR)/cpu_top.sv \
 	$(TB_DIR)/tb_cpu_top_tests.sv
+
+-include harness/Makefile
 
 .PHONY: all clean lint run_cpu_top_test_bins $(TBS) $(RUN_TBS) $(LINT_TBS)
 

@@ -1,3 +1,12 @@
 [submodule "externals/verilator"]
 	path = externals/verilator
 	url = https://github.com/verilator/verilator
+[submodule "externals/riscv-gnu-toolchain"]
+	path = externals/riscv-gnu-toolchain
+	url = https://github.com/riscv-collab/riscv-gnu-toolchain.git
+[submodule "externals/riscv-tests"]
+	path = externals/riscv-tests
+	url = https://github.com/riscv-software-src/riscv-tests
+[submodule "externals/riscv-isa-sim"]
+	path = externals/riscv-isa-sim
+	url = https://github.com/riscv-software-src/riscv-isa-sim.git

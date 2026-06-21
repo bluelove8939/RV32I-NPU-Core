@@ -6,7 +6,7 @@ module tb_cpu_top;
     localparam int unsigned DATA_WIDTH = 32;
     localparam int unsigned LINE_WORDS = 16;
     localparam int unsigned LINE_WIDTH = DATA_WIDTH * LINE_WORDS;
-    localparam int unsigned MEM_BYTES = 4096;
+    localparam int unsigned MEM_BYTES = 1048576;
     localparam int unsigned N_BANK_GROUPS = 4;
 
     localparam logic [6:0] OPCODE_LOAD   = 7'b0000011;

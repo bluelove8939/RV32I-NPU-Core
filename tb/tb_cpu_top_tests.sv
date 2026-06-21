@@ -6,7 +6,7 @@ module tb_cpu_top_tests;
     localparam int unsigned DATA_WIDTH = 32;
     localparam int unsigned LINE_WORDS = 16;
     localparam int unsigned LINE_WIDTH = DATA_WIDTH * LINE_WORDS;
-    localparam int unsigned MEM_BYTES = 4096;
+    localparam int unsigned MEM_BYTES = 1048576;
     localparam int unsigned N_BANK_GROUPS = 4;
     localparam int unsigned MAX_PROGRAM_WORDS = 1024;
     localparam int unsigned MAX_CYCLES = 5000;
@@ -18,6 +18,9 @@ module tb_cpu_top_tests;
     logic cpu_enable;
     logic lsu_flush_valid;
     logic lsu_flush_ready;
+    logic software_interrupt_pending;
+    logic timer_interrupt_pending;
+    logic external_interrupt_pending;
 
     logic                  cpu_i_req_valid;
     logic                  cpu_i_req_ready;
@@ -85,9 +88,9 @@ module tb_cpu_top_tests;
         .clk                          (clk),
         .reset_n                      (reset_n),
         .cpu_enable_i                 (cpu_enable),
-        .software_interrupt_pending_i (1'b0),
-        .timer_interrupt_pending_i    (1'b0),
-        .external_interrupt_pending_i (1'b0),
+        .software_interrupt_pending_i (software_interrupt_pending),
+        .timer_interrupt_pending_i    (timer_interrupt_pending),
+        .external_interrupt_pending_i (external_interrupt_pending),
         .lsu_flush_valid_i            (lsu_flush_valid),
         .lsu_flush_ready_o            (lsu_flush_ready),
         .i_spm_req_valid_o            (cpu_i_req_valid),
@@ -187,6 +190,9 @@ module tb_cpu_top_tests;
             reset_n = 1'b0;
             cpu_enable = 1'b0;
             lsu_flush_valid = 1'b0;
+            software_interrupt_pending = 1'b0;
+            timer_interrupt_pending = 1'b0;
+            external_interrupt_pending = 1'b0;
             preload_active = 1'b0;
             preload_d_req_valid = 1'b0;
             preload_d_req_write = 1'b0;
@@ -324,12 +330,14 @@ module tb_cpu_top_tests;
     task automatic run_until_halt();
         int unsigned cycles;
         int unsigned halt_count;
+        int unsigned irq_clear_delay;
         logic [31:0] halt_pc;
         begin
             @(negedge clk);
             cpu_enable = 1'b1;
             cycles = 0;
             halt_count = 0;
+            irq_clear_delay = 0;
             halt_pc = '0;
 
             while (cycles < MAX_CYCLES) begin
@@ -362,6 +370,20 @@ module tb_cpu_top_tests;
                         cpu_enable = 1'b0;
                         $display("[HALT] self-loop pc=0x%08x cycles=%0d", halt_pc, cycles);
                         return;
+                    end
+
+                    if (dbg_commit_interrupt) begin
+                        irq_clear_delay = 2;
+                    end
+                end
+
+                if (cycles == 20) begin
+                    external_interrupt_pending = 1'b1;
+                end
+                if (irq_clear_delay != 0) begin
+                    irq_clear_delay--;
+                    if (irq_clear_delay == 0) begin
+                        external_interrupt_pending = 1'b0;
                     end
                 end
                 cycles++;
@@ -425,6 +447,50 @@ module tb_cpu_top_tests;
                     if ((get_reg(10) !== 32'd123) || (data_line !== 32'd123)) begin
                         $fatal(1, "[FAIL] t5 expected x10=123 mem[0x240]=123 actual x10=0x%08x mem=0x%08x",
                                get_reg(10), data_line);
+                    end
+                end
+                32'd6: begin
+                    if (get_reg(11) !== 32'h8000_000b) begin
+                        $fatal(1, "[FAIL] t6 expected x11=external irq cause actual=0x%08x",
+                               get_reg(11));
+                    end
+                end
+                32'd7: begin
+                    if ((get_reg(10) !== 32'd42) || (get_reg(12) !== 32'd11) ||
+                        (get_reg(17) !== 32'd1)) begin
+                        $fatal(1, "[FAIL] t7 expected a0=42 mcause=11 a7=1 actual a0=0x%08x x12=0x%08x a7=0x%08x",
+                               get_reg(10), get_reg(12), get_reg(17));
+                    end
+                end
+                32'd8: begin
+                    if ((get_reg(3) !== 32'h80ff_7f01) ||
+                        (get_reg(4) !== 32'hffff_ff80) ||
+                        (get_reg(5) !== 32'h0000_0080) ||
+                        (get_reg(6) !== 32'hffff_80ff) ||
+                        (get_reg(7) !== 32'h0000_80ff)) begin
+                        $fatal(1, "[FAIL] t8 load/store width mismatch x3=0x%08x x4=0x%08x x5=0x%08x x6=0x%08x x7=0x%08x",
+                               get_reg(3), get_reg(4), get_reg(5),
+                               get_reg(6), get_reg(7));
+                    end
+                end
+                32'd9: begin
+                    if ((get_reg(11) !== 32'd4) || (get_reg(12) !== 32'd6)) begin
+                        $fatal(1, "[FAIL] t9 expected load/store misalign causes 4/6 actual x11=0x%08x x12=0x%08x",
+                               get_reg(11), get_reg(12));
+                    end
+                end
+                32'd10: begin
+                    if ((get_reg(2) !== 32'h0000_0000) ||
+                        (get_reg(3) !== 32'h0000_0055) ||
+                        (get_reg(5) !== 32'h0000_0055) ||
+                        (get_reg(6) !== 32'h0000_0050) ||
+                        (get_reg(7) !== 32'h0000_0050) ||
+                        (get_reg(8) !== 32'h0000_0003) ||
+                        (get_reg(9) !== 32'h0000_0007) ||
+                        (get_reg(10) !== 32'h0000_0006)) begin
+                        $fatal(1, "[FAIL] t10 CSR op mismatch x2=0x%08x x3=0x%08x x5=0x%08x x6=0x%08x x7=0x%08x x8=0x%08x x9=0x%08x x10=0x%08x",
+                               get_reg(2), get_reg(3), get_reg(5), get_reg(6),
+                               get_reg(7), get_reg(8), get_reg(9), get_reg(10));
                     end
                 end
                 default: begin

@@ -4,7 +4,8 @@ module spm_bus #(
     parameter int unsigned ADDR_WIDTH    = 32,
     parameter int unsigned DATA_WIDTH    = 32,
     parameter int unsigned LINE_WORDS    = 16,
-    parameter int unsigned MEM_BYTES     = 4096,
+    parameter logic [ADDR_WIDTH-1:0] BASE_ADDR = '0,
+    parameter int unsigned MEM_BYTES     = 1048576,
     parameter int unsigned N_BANK_GROUPS = 4,
     parameter int unsigned LINE_WIDTH    = DATA_WIDTH * LINE_WORDS
 ) (
@@ -33,6 +34,8 @@ module spm_bus #(
 
     localparam int unsigned CACHELINE_BYTES = (DATA_WIDTH / 8) * LINE_WORDS;
     localparam int unsigned NUM_LINES       = MEM_BYTES / CACHELINE_BYTES;
+    localparam logic [ADDR_WIDTH-1:0] BASE_LINE_ADDR =
+        BASE_ADDR[ADDR_WIDTH-1:0] / CACHELINE_BYTES;
     localparam int unsigned GROUP_BITS      = (N_BANK_GROUPS <= 1) ? 1 : $clog2(N_BANK_GROUPS);
     localparam int unsigned GROUP_SHIFT     = (N_BANK_GROUPS <= 1) ? 0 : $clog2(N_BANK_GROUPS);
     localparam int unsigned GROUP_DEPTH     = (NUM_LINES + N_BANK_GROUPS - 1) / N_BANK_GROUPS;
@@ -59,6 +62,8 @@ module spm_bus #(
 
     logic [GROUP_BITS-1:0] i_group_idx;
     logic [GROUP_BITS-1:0] d_group_idx;
+    logic [ADDR_WIDTH-1:0] i_local_line_addr;
+    logic [ADDR_WIDTH-1:0] d_local_line_addr;
     logic [ROW_BITS-1:0]   i_row_addr;
     logic [ROW_BITS-1:0]   d_row_addr;
     logic                  i_in_range;
@@ -66,19 +71,30 @@ module spm_bus #(
     logic                  i_error_pending_q;
     logic                  d_error_pending_q;
 
+    assign i_local_line_addr = i_req_line_addr_i - BASE_LINE_ADDR;
+    assign d_local_line_addr = d_req_line_addr_i - BASE_LINE_ADDR;
     assign i_group_idx = (N_BANK_GROUPS <= 1) ? '0 :
-        i_req_line_addr_i[GROUP_BITS-1:0];
+        i_local_line_addr[GROUP_BITS-1:0];
     assign d_group_idx = (N_BANK_GROUPS <= 1) ? '0 :
-        d_req_line_addr_i[GROUP_BITS-1:0];
-    assign i_in_range = (i_req_line_addr_i < NUM_LINES);
-    assign d_in_range = (d_req_line_addr_i < NUM_LINES);
+        d_local_line_addr[GROUP_BITS-1:0];
+    generate
+        if (BASE_ADDR == '0) begin : gen_zero_base_range
+            assign i_in_range = (i_local_line_addr < NUM_LINES);
+            assign d_in_range = (d_local_line_addr < NUM_LINES);
+        end else begin : gen_nonzero_base_range
+            assign i_in_range = (i_req_line_addr_i >= BASE_LINE_ADDR) &&
+                                (i_local_line_addr < NUM_LINES);
+            assign d_in_range = (d_req_line_addr_i >= BASE_LINE_ADDR) &&
+                                (d_local_line_addr < NUM_LINES);
+        end
+    endgenerate
 
     always_comb begin
         i_row_addr = '0;
         d_row_addr = '0;
         for (int unsigned bit_idx = 0; bit_idx < ROW_BITS; bit_idx++) begin
-            i_row_addr[bit_idx] = i_req_line_addr_i[bit_idx + GROUP_SHIFT];
-            d_row_addr[bit_idx] = d_req_line_addr_i[bit_idx + GROUP_SHIFT];
+            i_row_addr[bit_idx] = i_local_line_addr[bit_idx + GROUP_SHIFT];
+            d_row_addr[bit_idx] = d_local_line_addr[bit_idx + GROUP_SHIFT];
         end
     end
 
