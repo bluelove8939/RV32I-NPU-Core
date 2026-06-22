@@ -1,21 +1,15 @@
 SHELL := /bin/bash
 
-CC=riscv32-unknown-elf-gcc
-CFLAGS=-march=rv32i_zicsr -mabi=ilp32 -ffreestanding \
-  -nostartfiles \
-  -fno-exceptions \
-  -fno-unwind-tables \
-  -fno-asynchronous-unwind-tables \
-  -I../../env \
-  -Wl,-T,../../env/link.ld \
-  -Wl,--defsym=__stack_size=0x8000
+include ../../env/nmta_env.mk
+
+.DEFAULT_GOAL := all
 
 .PHONY: all clean
 
 all: exe.elf
 
-exe.elf: main.c ../../env/start.S ../../env/syscalls.c ../../env/link.ld
-	$(CC) $(CFLAGS) ../../env/start.S ../../env/syscalls.c main.c -o $@
+exe.elf: main.c $(NMTA_ENV_LIB) $(NMTA_LINKER_SCRIPT)
+	$(NMTA_CC) $(NMTA_CFLAGS) $(NMTA_LDFLAGS) main.c $(NMTA_ENV_LINK) -o $@
 
 clean:
 	rm -f exe.elf

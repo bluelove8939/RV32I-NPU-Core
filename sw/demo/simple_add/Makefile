@@ -1,16 +1,20 @@
 SHELL := /bin/bash
 
-CC=riscv32-unknown-elf-gcc
-CFLAGS=-march=rv32i_zicsr -mabi=ilp32 -nostdlib -ffreestanding \
-  -Wl,-T,../../env/link.ld \
-  -Wl,--defsym=__stack_size=0x8000
+
+ifneq ($(strip $(NMTA_ENV_MK)),)
+NMTA_ENV_MK:=../../env/nmta_env.mk
+endif
+
+include $(NMTA_ENV_MK)
+
+.DEFAULT_GOAL := all
 
 .PHONY: all clean
 
 all: exe.elf
 
-exe.elf: main.c ../../env/start.S ../../env/link.ld
-	$(CC) $(CFLAGS) ../../env/start.S main.c -o $@
+exe.elf: main.c $(NMTA_ENV_LIB) $(NMTA_LINKER_SCRIPT)
+	$(NMTA_CC) $(NMTA_CFLAGS) $(NMTA_LDFLAGS) main.c $(NMTA_ENV_LINK) -o $@
 
 clean:
 	rm -f exe.elf
