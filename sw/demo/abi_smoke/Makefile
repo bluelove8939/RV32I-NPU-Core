@@ -8,10 +8,10 @@ CFLAGS=-march=rv32i_zicsr -mabi=ilp32 -nostdlib -ffreestanding \
 
 .PHONY: all clean
 
-all: abi_smoke.elf
+all: exe.elf
 
-abi_smoke.elf: main.c ../../env/start.S ../../env/syscalls.c ../../env/link.ld
+exe.elf: main.c ../../env/start.S ../../env/syscalls.c ../../env/link.ld
 	$(CC) $(CFLAGS) ../../env/start.S ../../env/syscalls.c main.c -o $@
 
 clean:
-	rm -f abi_smoke.elf
+	rm -f exe.elf

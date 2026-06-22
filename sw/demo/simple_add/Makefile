@@ -7,10 +7,10 @@ CFLAGS=-march=rv32i_zicsr -mabi=ilp32 -nostdlib -ffreestanding \
 
 .PHONY: all clean
 
-all: simple_add.elf
+all: exe.elf
 
-simple_add.elf: main.c ../../env/start.S ../../env/link.ld
+exe.elf: main.c ../../env/start.S ../../env/link.ld
 	$(CC) $(CFLAGS) ../../env/start.S main.c -o $@
 
 clean:
-	rm -f simple_add.elf
+	rm -f exe.elf
