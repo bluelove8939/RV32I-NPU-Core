@@ -1,3 +1,7 @@
 build
 .trashbin
 .logs
+
+*.elf
+*.a
+*.o
